@@ -1,0 +1,179 @@
+#此文件主要定义创世块配置信息，其中包括：共识规则、组织通信协议等，根据实际情况修改组织的证书地址、发布服务地址配置，主要修改部分为Organizations、Orderer、Profiles配置项
+#OrdererOrg为排序组织，name是组织名称，id是组织唯一标识，mspdir为组织证书位置，Policies是策略
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg #组织名称
+        ID: OrdererMSP #组织唯一标识
+        MSPDir: crypto-config/ordererOrganizations/example.com/msp #组织证书位置
+        Policies: #策略
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+        # OrdererEndpoints中配置的是默认排序节点，我们提供的排序节点为orderer1、orderer2、orderer3，所以需要改为orderer1.test.com
+        OrdererEndpoints:
+            - orderer1.example.com:7050
+
+    - &Org1 #定义组织信息，name和id为组织的名称，mspdir为组织证书根地址
+        Name: Org1MSP
+        ID: Org1MSP
+        MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+        Policies: #Policies为用户权限策略
+            Readers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org1MSP.peer')"
+
+        AnchorPeers: #AnchorPeers为各组织选举的锚节点地址
+            # Org1组织下锚节点访问地址，其中端口是指区块链网络中能访问的，而不是节点容器内部的，一般指容器映射到宿主机的端口
+            - Host: peer0.org1.example.com
+              Port: 7051
+
+    - &Org2
+        Name: Org2MSP
+        ID: Org2MSP
+        MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org2MSP.peer')"
+
+        AnchorPeers:
+            - Host: peer0.org2.example.com
+              Port: 7051
+
+    - &Org3
+        Name: Org3MSP
+        ID: Org3MSP
+        MSPDir: crypto-config/peerOrganizations/org3.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org3MSP.admin', 'Org3MSP.peer', 'Org3MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org3MSP.admin', 'Org3MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org3MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org3MSP.peer')"
+
+        AnchorPeers:
+            - Host: peer0.org3.example.com
+              Port: 7051
+
+# 修改orderer节点配置，采用ETCdraft模式，并配置三个节点信息
+Orderer: &OrdererDefaults
+
+    OrdererType: etcdraft
+
+    Addresses: # orderer 集群节点
+        - orderer0.example.com:7050
+        - orderer1.example.com:7050
+        - orderer2.example.com:7050
+    # Batch Timeout: The amount of time to wait before creating a batch
+    BatchTimeout: 2s
+
+    # Batch Size: Controls the number of messages batched into a block
+    BatchSize:
+
+        MaxMessageCount: 100
+
+        AbsoluteMaxBytes: 64 MB
+
+        PreferredMaxBytes: 512 KB
+
+    # 定义etcdraft模式的节点信息，如果采用了tls，那么需要配置tlscert证书
+    EtcdRaft:
+        Consenters:
+        - Host: orderer1.example.com
+          Port: 7050
+          ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/tls/server.crt
+          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/tls/server.crt
+        - Host: orderer2.example.com
+          Port: 7050
+          ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+        - Host: orderer3.example.com
+          Port: 7050
+          ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt
+          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt
+    
+    Organizations:
+
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        # BlockValidation specifies what signatures must be included in the block
+        # from the orderer for the peer to validate it.
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+
+# 修改生成创世区块配置的配置信息，主要修改组织结构信息
+Profiles:
+    ThreeOrgsChannel: #配置通道信息，需要指明该通道有哪些组织
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1
+                - *Org2
+                - *Org3
+            Capabilities:
+                <<: *ApplicationCapabilities
+
+    # 创世块配置信息，需要指明有哪些组织，orderer节点有哪些，peer节点有哪些
+    ThreeOrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Capabilities:
+            <<: *ChannelCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+            - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+            - <<: *OrdererOrg
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                - *Org1
+                - *Org2
+                - *Org3

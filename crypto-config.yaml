@@ -1,0 +1,33 @@
+# 该文件主要用于定义orderer节点、组织下的peer节点生成证书；Domain为基础域名，Specs是命名空间，如orderer1.test.com 
+# 本次定义3个orderer，3个组织，每个组织2个peer和1个用户，具体的crypto-config.yaml配置如下：
+OrdererOrgs:
+  - Name: Orderer
+    Domain: example.com
+    Specs:
+      - Hostname: orderer1
+      - Hostname: orderer2
+      - Hostname: orderer3
+
+# 修改组织中peer节点配置，name是组织名称，domain为基础域名，Template定义节点数量，users定义普通用户数量
+PeerOrgs:
+  - Name: Org1
+    Domain: org1.example.com
+    EnableNodeOUs: true
+    Template: #peer
+      Count: 2
+    Users: #用户
+      Count: 1
+  - Name: Org2
+    Domain: org2.example.com
+    EnableNodeOUs: true
+    Template: 
+      Count: 2
+    Users: 
+      Count: 1
+  - Name: Org3
+    Domain: org3.example.com
+    EnableNodeOUs: true
+    Template: 
+      Count: 2
+    Users: 
+      Count: 1
